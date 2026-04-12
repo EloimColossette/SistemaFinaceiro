@@ -1,5 +1,6 @@
 package service;
 
+import com.sun.source.tree.ReturnTree;
 import model.UsuarioModel;
 import repository.UsuarioRepository;
 
@@ -52,8 +53,7 @@ public class ServiceUsuario {
         );
     }
 
-    // PARTCH
-
+    // PARCH
     public static void atualizarParcialmenteUsuario(UsuarioModel usuario) throws Exception {
         if(usuario.getId() < 0) {
             throw new Exception("ID Invalido");
@@ -88,15 +88,15 @@ public class ServiceUsuario {
     public static String passwordEncrypted(String password) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
 
-        byte[] hash = md.digest(password.getBytes());
+        byte[] has = md.digest(password.getBytes());
 
         StringBuilder sb = new StringBuilder();
 
-        for(byte b : hash) {
+        for(byte b : has){
             String hex = Integer.toHexString(b & 0xff);
 
             if(hex.length() == 1){
-                sb.append("0");
+                sb.append('0');
             }
 
             sb.append(hex);
@@ -105,5 +105,32 @@ public class ServiceUsuario {
         return sb.toString();
     }
 
+    public static String login(String email, String password) throws Exception {
+        // validação basica
+        if(email == null || email.isEmpty()) {
+            throw new Exception("Email Obrigatorio");
+        }
 
+        if(password == null || password.isEmpty()) {
+            throw new Exception("Password Obrigatorio");
+        }
+
+        //busca usuario
+        UsuarioModel user = UsuarioRepository.buscarEmail(email);
+
+        if(user == null) {
+            throw new Exception("Usuario nao encontrado");
+        }
+
+        String encryptedPassword = passwordEncrypted(password);
+
+        // TEMPORARIO sem argon2
+        if(!encryptedPassword.equals(user.getPassword())) {
+            throw new Exception("Senha Incorreta");
+        }
+
+        // JWT TEMPORARIO
+        return "LOGIN OK";
+
+    }
 }

@@ -1,6 +1,7 @@
 package repository;
 
 import database.Database;
+import model.UsuarioModel;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -133,5 +134,33 @@ public class UsuarioRepository {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         }
+    }
+
+    public static UsuarioModel buscarEmail(String email) throws Exception {
+        String sql = "SELECT * FROM users WHERE email = ?";
+
+        try(Connection conn = Database.conectar();
+        PreparedStatement stmt = conn.prepareStatement(sql)
+        ){
+            stmt.setString(1, email);
+
+            ResultSet resultSet = stmt.executeQuery();
+
+            if(resultSet.next()){
+                UsuarioModel user = new UsuarioModel();
+
+                user.setId(resultSet.getInt("id_user"));
+                user.setEmail(resultSet.getString("email"));
+                user.setFirst_name(resultSet.getString("first_name"));
+                user.setLast_name(resultSet.getString("last_name"));
+                user.setCpf(resultSet.getString("cpf"));
+                user.setPassword(resultSet.getString("senha"));
+
+                return user;
+            }
+
+        }
+
+        return null;
     }
 }

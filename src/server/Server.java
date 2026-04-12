@@ -18,6 +18,7 @@ public class Server{
 
             logger.info("Criando rota /Usuario...");
             server.createContext("/usuario", new UsuarioController());
+            server.createContext("/login", new UsuarioController());
 
             server.setExecutor(null);
 

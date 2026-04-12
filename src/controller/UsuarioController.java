@@ -147,6 +147,7 @@ public class UsuarioController implements HttpHandler{
 
     @Override
     public void handle(HttpExchange exchange){
+        System.out.println("PATH: " + exchange.getRequestURI().getPath());
         try{
             String metodo = exchange.getRequestMethod();
 
@@ -155,12 +156,18 @@ public class UsuarioController implements HttpHandler{
                     handleGet(exchange);
                     break;
                 case "POST":
-                    handlePost(exchange);
+                    String path = exchange.getRequestURI().getPath();
+
+                    if(path.equals("/login")){
+                        handlerLogin(exchange);
+                    }else{
+                        handlePost(exchange);
+                    }
                     break;
                 case "PUT":
                     handlePut(exchange);
                     break;
-                case "PARTCH":
+                case "PATCH":
                     handlerPartch(exchange);
                     break;
                 case "DELETE":
@@ -172,5 +179,18 @@ public class UsuarioController implements HttpHandler{
         }catch (Exception e){
             logger.log(Level.SEVERE, "Erro ao processar requisição", e);
         }
+    }
+
+    private void handlerLogin(HttpExchange exchange) throws Exception{
+        logger.info("Recebendo requisição POST/login");
+
+        String body = lerBody(exchange);
+
+        String email = getValorJson(body, "email");
+        String password = getValorJson(body, "password");
+
+        String result = ServiceUsuario.login(email, password);
+
+        sendResponse(exchange, result, 200);
     }
 }
