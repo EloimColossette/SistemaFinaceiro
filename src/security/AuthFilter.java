@@ -12,17 +12,24 @@ public class AuthFilter extends Filter {
     }
 
     @Override
-    public void doFilter(HttpExchange exchange, Chain chain) throws IOException{
-        String path = exchange.getRequestURI().getPath();
+    public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
 
-        if(path.equals("/login")){
+        String path = exchange.getRequestURI().getPath();
+        String method = exchange.getRequestMethod();
+
+        // 🔓 Rotas públicas
+        if (
+                path.equals("/login") ||
+                        (path.equals("/usuarios") && method.equals("POST"))
+        ) {
             chain.doFilter(exchange);
             return;
         }
 
+        // 🔒 Rotas protegidas
         String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
 
-        if(authHeader == null || !authHeader.startsWith("Bearer ")){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendResponse(exchange, "Token não informado", 401);
             return;
         }
@@ -31,8 +38,8 @@ public class AuthFilter extends Filter {
 
         String email = JwtUtil.validateToken(token);
 
-        if(email==null){
-            sendResponse(exchange, "Token Inválido", 401);
+        if (email == null) {
+            sendResponse(exchange, "Token inválido", 401);
             return;
         }
 

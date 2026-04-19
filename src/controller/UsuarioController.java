@@ -34,7 +34,6 @@ public class UsuarioController implements HttpHandler{
     private void handlePost(HttpExchange exchange) throws Exception{
         logger.info("Criando requisição POST /Usuario");
 
-        if(!validarToken(exchange)) return;
 
         String body = lerBody(exchange);
 
@@ -192,7 +191,7 @@ public class UsuarioController implements HttpHandler{
                 case "POST":
                     String path = exchange.getRequestURI().getPath();
 
-                    if(path.equals("/login")){
+                    if(path.startsWith("/login")){
                         handlerLogin(exchange); // ❗ NÃO valida token aqui
                     } else {
                         handlePost(exchange); // aqui sim pode validar
