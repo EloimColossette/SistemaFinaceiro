@@ -1,5 +1,6 @@
 package controller;
 
+import security.JwtUtil;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -20,6 +21,8 @@ public class UsuarioController implements HttpHandler{
     private void handleGet(HttpExchange exchange) throws Exception{
         logger.info("Recebendo Requisicao GET /Usuario");
 
+        if(!validarToken(exchange)) return;
+
         List<String> users = ServiceUsuario.listarUsuarios();
 
         String response = String.join("\n", users);
@@ -30,6 +33,8 @@ public class UsuarioController implements HttpHandler{
     // POST
     private void handlePost(HttpExchange exchange) throws Exception{
         logger.info("Criando requisição POST /Usuario");
+
+        if(!validarToken(exchange)) return;
 
         String body = lerBody(exchange);
 
@@ -51,6 +56,16 @@ public class UsuarioController implements HttpHandler{
 
         logger.info("Recebendo a requisição PUT /Usuario");
 
+        if(!validarToken(exchange)) return;
+
+        String path = exchange.getRequestURI().getPath();
+        int id = getIdFrompath(path);
+
+        if(id <= 0){
+            sendResponse(exchange, "ID Invalido!", 400);
+            return;
+        }
+
         String body = lerBody(exchange);
 
         UsuarioModel user = new UsuarioModel();
@@ -62,14 +77,16 @@ public class UsuarioController implements HttpHandler{
         user.setLast_name(getValorJson(body, "last_name"));
         user.setCpf(getValorJson(body, "cpf"));
 
-        ServiceUsuario.criarUsuario(user);
+        ServiceUsuario.atualizarUsuario(user);
 
         sendResponse(exchange, "Usuário atualizado com sucesso!", 200);
     }
 
-    // PARTCH
-    private void handlerPartch(HttpExchange exchange) throws Exception{
+    // PATCH
+    private void handlerPatch(HttpExchange exchange) throws Exception{
         logger.info("Recebendo requisição PARTCH /usuario");
+
+        if(!validarToken(exchange)) return;
 
         String body = lerBody(exchange);
 
@@ -82,7 +99,7 @@ public class UsuarioController implements HttpHandler{
         user.setLast_name(getValorJson(body, "last_name"));
         user.setCpf(getValorJson(body, "cpf"));
 
-        ServiceUsuario.criarUsuario(user);
+        ServiceUsuario.atualizarParcialmenteUsuario(user);
 
         sendResponse(exchange, "Usuario atualizado parcialmente com sucesso!", 200);
     }
@@ -90,11 +107,18 @@ public class UsuarioController implements HttpHandler{
     // DELETE
     private void handleDelete(HttpExchange exchange) throws Exception{
 
-        logger.info("Recebendo requisição DELETE /Usuario");
+        logger.info("Recebendo requisição DELETE /Usuario/{id}");
 
-        String query = exchange.getRequestURI().getQuery();
+        if(!validarToken(exchange)) return;
 
-        int id = Integer.parseInt(query.split("=")[1]);
+        String path = exchange.getRequestURI().getPath();
+
+        int id = getIdFrompath(path);
+
+        if(id <= 0){
+            sendResponse(exchange, "ID Invalido", 400);
+            return;
+        }
 
         ServiceUsuario.excluirUsuario(id);
 
@@ -108,6 +132,16 @@ public class UsuarioController implements HttpHandler{
         is.close();
 
         return body;
+    }
+
+    private int getIdFrompath(String path){
+        String[] partes = path.split("/");
+
+        if(partes.length < 3){
+            return -1;
+        }
+
+        return Integer.parseInt(partes[2]);
     }
 
     private void sendResponse(HttpExchange exchange, String resposta, int status) throws Exception{
@@ -159,16 +193,16 @@ public class UsuarioController implements HttpHandler{
                     String path = exchange.getRequestURI().getPath();
 
                     if(path.equals("/login")){
-                        handlerLogin(exchange);
-                    }else{
-                        handlePost(exchange);
+                        handlerLogin(exchange); // ❗ NÃO valida token aqui
+                    } else {
+                        handlePost(exchange); // aqui sim pode validar
                     }
                     break;
                 case "PUT":
                     handlePut(exchange);
                     break;
                 case "PATCH":
-                    handlerPartch(exchange);
+                    handlerPatch(exchange);
                     break;
                 case "DELETE":
                     handleDelete(exchange);
@@ -178,6 +212,29 @@ public class UsuarioController implements HttpHandler{
             }
         }catch (Exception e){
             logger.log(Level.SEVERE, "Erro ao processar requisição", e);
+        }
+    }
+
+    private boolean validarToken(HttpExchange exchange) throws Exception {
+
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+
+        // 1. Verifica se veio o header
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            sendResponse(exchange, "Token não informado", 401);
+            return false;
+        }
+
+        // 2. Remove "Bearer "
+        String token = authHeader.replace("Bearer ", "");
+
+        try {
+            // 3. Valida token
+            JwtUtil.validateToken(token); // ⚠️ veja o nome correto no seu JwtUtil
+            return true;
+        } catch (Exception e) {
+            sendResponse(exchange, "Token inválido", 401);
+            return false;
         }
     }
 

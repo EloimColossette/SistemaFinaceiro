@@ -2,6 +2,7 @@ package server;
 
 import com.sun.net.httpserver.HttpServer;
 import controller.UsuarioController;
+import security.AuthFilter;
 
 import java.net.InetSocketAddress;
 import java.util.logging.Level;
@@ -17,7 +18,9 @@ public class Server{
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
             logger.info("Criando rota /Usuario...");
-            server.createContext("/usuario", new UsuarioController());
+            var context = server.createContext("/usuarios", new UsuarioController());
+
+            context.getFilters().add(new AuthFilter());
             server.createContext("/login", new UsuarioController());
 
             server.setExecutor(null);

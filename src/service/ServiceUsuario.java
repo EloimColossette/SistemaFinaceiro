@@ -1,11 +1,12 @@
 package service;
 
-import com.sun.source.tree.ReturnTree;
 import model.UsuarioModel;
 import repository.UsuarioRepository;
+import security.JwtUtil;
 
 import java.util.List;
-import java.security.MessageDigest;
+import de.mkammerer.argon2.Argon2;
+import de.mkammerer.argon2.Argon2Factory;
 
 public class ServiceUsuario {
 
@@ -24,7 +25,7 @@ public class ServiceUsuario {
             throw new Exception("Password Obrigatorio");
         }
 
-        String EncryptedPassword = passwordEncrypted(usuario.getPassword());
+        String EncryptedPassword = hashPassword(usuario.getPassword());
 
         UsuarioRepository.criarUsuario(
                 usuario.getEmail(),
@@ -41,7 +42,7 @@ public class ServiceUsuario {
             throw new Exception("ID Invalido");
         }
 
-        String EncryptedPassword = passwordEncrypted(usuario.getPassword());
+        String EncryptedPassword = hashPassword(usuario.getPassword());
 
         UsuarioRepository.atualizarUsuario(
                 usuario.getId(),
@@ -53,7 +54,7 @@ public class ServiceUsuario {
         );
     }
 
-    // PARCH
+    // PATCH
     public static void atualizarParcialmenteUsuario(UsuarioModel usuario) throws Exception {
         if(usuario.getId() < 0) {
             throw new Exception("ID Invalido");
@@ -62,7 +63,7 @@ public class ServiceUsuario {
         String password = usuario.getPassword();
 
         if(password != null && !password.isEmpty()) {
-            password = passwordEncrypted(password);
+            password = hashPassword(password);
         }
 
         UsuarioRepository.atualizarParcialmenteUsuario(
@@ -85,24 +86,11 @@ public class ServiceUsuario {
         UsuarioRepository.deletarUsuario(id);
     }
 
-    public static String passwordEncrypted(String password) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
+    public static String hashPassword(String password) throws Exception {
+        Argon2 argon2 = Argon2Factory.create();
 
-        byte[] has = md.digest(password.getBytes());
-
-        StringBuilder sb = new StringBuilder();
-
-        for(byte b : has){
-            String hex = Integer.toHexString(b & 0xff);
-
-            if(hex.length() == 1){
-                sb.append('0');
-            }
-
-            sb.append(hex);
-        }
-
-        return sb.toString();
+        // Parametros: iterations, memory, paralleism
+        return argon2.hash(3,65536, 1, password.toCharArray());
     }
 
     public static String login(String email, String password) throws Exception {
@@ -122,15 +110,17 @@ public class ServiceUsuario {
             throw new Exception("Usuario nao encontrado");
         }
 
-        String encryptedPassword = passwordEncrypted(password);
+        Argon2 argon2 = Argon2Factory.create();
 
-        // TEMPORARIO sem argon2
-        if(!encryptedPassword.equals(user.getPassword())) {
-            throw new Exception("Senha Incorreta");
+        boolean valido = argon2.verify(user.getPassword(), password.toCharArray());
+
+        // argon2
+        if(!valido) {
+            throw new Exception("Usuario ou Senha Invalidos");
         }
 
-        // JWT TEMPORARIO
-        return "LOGIN OK";
+        // JWT
+        return JwtUtil.generateToken(user.getEmail());
 
     }
 }
