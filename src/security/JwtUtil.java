@@ -26,7 +26,9 @@ public class JwtUtil {
                     .build()
                     .verify(token)
                     .getSubject();
+
         }catch(Exception e){
+            e.printStackTrace(); // 🔥 MOSTRA O ERRO REAL
             return null;
         }
     }

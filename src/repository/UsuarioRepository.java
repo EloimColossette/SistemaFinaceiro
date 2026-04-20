@@ -28,8 +28,8 @@ public class UsuarioRepository {
                 UsuarioModel user = new UsuarioModel();
 
                 user.setId(resultSet.getInt("id_user"));
-                user.setFirst_name(resultSet.getString("first_name"));
-                user.setLast_name(resultSet.getString("last_name"));
+                user.setFirstName(resultSet.getString("first_name"));
+                user.setLastName(resultSet.getString("last_name"));
                 user.setCpf(resultSet.getString("cpf"));
                 user.setEmail(resultSet.getString("email"));
 
@@ -80,49 +80,55 @@ public class UsuarioRepository {
     }
 
     public static void atualizarParcialmenteUsuario(int id, String email, String password, String firstName, String lastName, String cpf) throws Exception {
-        StringBuilder sql = new StringBuilder("UPDATE users SET ");
 
+        StringBuilder sql = new StringBuilder("UPDATE users SET ");
         List<Object> values = new ArrayList<>();
 
-        if (!email.isEmpty()) {
+        if (email != null && !email.isEmpty()) {
             sql.append("email = ?, ");
             values.add(email);
         }
-        if (!password.isEmpty()) {
+
+        if (password != null && !password.isEmpty()) {
             sql.append("password = ?, ");
             values.add(password);
         }
-        if (!firstName.isEmpty()) {
+
+        if (firstName != null && !firstName.isEmpty()) {
             sql.append("first_name = ?, ");
             values.add(firstName);
         }
-        if (!lastName.isEmpty()) {
+
+        if (lastName != null && !lastName.isEmpty()) {
             sql.append("last_name = ?, ");
             values.add(lastName);
         }
-        if (!cpf.isEmpty()) {
+
+        if (cpf != null && !cpf.isEmpty()) {
             sql.append("cpf = ?, ");
             values.add(cpf);
         }
 
-        if(values.isEmpty()){
-            throw new Exception("Nenhum registro parcialmente");
+        if (values.isEmpty()) {
+            throw new Exception("Nenhum campo informado para atualização");
         }
 
+        // remove última vírgula
         sql.setLength(sql.length() - 2);
 
-        sql.append("WHERE id_user = ?");
+        sql.append(" WHERE id_user = ?");
         values.add(id);
 
-        try(Connection conn = Database.conectar();
-            PreparedStatement stmt = conn.prepareStatement(sql.toString())){
+        try (
+                Connection conn = Database.conectar();
+                PreparedStatement stmt = conn.prepareStatement(sql.toString())
+        ) {
 
-            for(int i = 0; i < values.size(); i++){
-                stmt.setObject(i +1, values.get(i));
+            for (int i = 0; i < values.size(); i++) {
+                stmt.setObject(i + 1, values.get(i));
             }
 
             stmt.executeUpdate();
-
         }
     }
 
@@ -155,8 +161,8 @@ public class UsuarioRepository {
 
                 user.setId(resultSet.getInt("id_user"));
                 user.setEmail(resultSet.getString("email"));
-                user.setFirst_name(resultSet.getString("first_name"));
-                user.setLast_name(resultSet.getString("last_name"));
+                user.setFirstName(resultSet.getString("first_name"));
+                user.setLastName(resultSet.getString("last_name"));
                 user.setCpf(resultSet.getString("cpf"));
                 user.setPassword(resultSet.getString("password"));
 

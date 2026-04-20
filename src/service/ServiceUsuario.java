@@ -1,5 +1,6 @@
 package service;
 
+import exception.ApiException;
 import model.UsuarioModel;
 import repository.UsuarioRepository;
 import security.JwtUtil;
@@ -19,10 +20,10 @@ public class ServiceUsuario {
     public static void criarUsuario(UsuarioRequest usuario) throws Exception {
         // Validação Simples
         if(usuario.getEmail() == null || usuario.getEmail().isEmpty()) {
-            throw new Exception("Email Obrigatorio");
+            throw new ApiException("Email Obrigatorio", 400);
         }
         if(usuario.getPassword() == null || usuario.getPassword().isEmpty()) {
-            throw new Exception("Password Obrigatorio");
+            throw new ApiException("Password Obrigatorio", 400);
         }
 
         String EncryptedPassword = hashPassword(usuario.getPassword());
@@ -39,7 +40,7 @@ public class ServiceUsuario {
     // PUT
     public static void atualizarUsuario(int id, UsuarioRequest usuario) throws Exception {
         if(id < 0) {
-            throw new Exception("ID Invalido");
+            throw new ApiException("ID inválido", 400);
         }
 
         String EncryptedPassword = hashPassword(usuario.getPassword());
@@ -57,7 +58,7 @@ public class ServiceUsuario {
     // PATCH
     public static void atualizarParcialmenteUsuario(int id, UsuarioRequest usuario) throws Exception {
         if(id< 0) {
-            throw new Exception("ID Invalido");
+            throw new ApiException("ID inválido", 400);
         }
 
         String password = usuario.getPassword();
@@ -80,7 +81,7 @@ public class ServiceUsuario {
     // DELETE
     public static void excluirUsuario(int id) throws Exception {
         if(id <= 0){
-            throw new Exception("ID Invalido");
+            throw new ApiException("ID inválido", 400);
         }
 
         UsuarioRepository.deletarUsuario(id);
@@ -96,18 +97,18 @@ public class ServiceUsuario {
     public static String login(String email, String password) throws Exception {
         // validação basica
         if(email == null || email.isEmpty()) {
-            throw new Exception("Email Obrigatorio");
+            throw new ApiException("Email Obrigatorio", 400);
         }
 
         if(password == null || password.isEmpty()) {
-            throw new Exception("Password Obrigatorio");
+            throw new ApiException("Password Obrigatorio", 400);
         }
 
         //busca usuario
         UsuarioModel user = UsuarioRepository.buscarEmail(email);
 
         if(user == null) {
-            throw new Exception("Usuario nao encontrado");
+            throw new ApiException("Usuário não encontrado", 404);
         }
 
         Argon2 argon2 = Argon2Factory.create();
@@ -116,7 +117,7 @@ public class ServiceUsuario {
 
         // argon2
         if(!valido) {
-            throw new Exception("Usuario ou Senha Invalidos");
+            throw new ApiException("Usuário ou senha inválidos", 401);
         }
 
         // JWT

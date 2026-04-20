@@ -7,7 +7,7 @@ public class UsuarioResponse {
     private String lastName;
     private String cpf;
 
-    public int gertID() {
+    public int getId() {
         return id;
     }
 

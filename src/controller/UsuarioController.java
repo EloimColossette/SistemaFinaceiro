@@ -1,13 +1,13 @@
 package controller;
 
+import dto.ApiResponse;
 import dto.UsuarioRequest;
-import security.JwtUtil;
+import dto.UsuarioResponse;
+import exception.ApiException;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
-
 import model.UsuarioModel;
 import service.ServiceUsuario;
-
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
@@ -25,11 +25,28 @@ public class UsuarioController implements HttpHandler {
     private void handleGet(HttpExchange exchange) throws Exception {
         logger.info("Recebendo Requisicao GET /Usuario");
 
+
         List<UsuarioModel> users = ServiceUsuario.listarUsuarios();
 
-        String response = mapper.writeValueAsString(users);
+        List<UsuarioResponse> responseDtos = users.stream().map(user -> {
+            UsuarioResponse dto = new UsuarioResponse();
+            dto.setId(user.getId());
+            dto.setEmail(user.getEmail());
+            dto.setFirstName(user.getFirstName());
+            dto.setLastName(user.getLastName());
+            dto.setCpf(user.getCpf());
+            return dto;
+        }).toList();
 
-        sendResponse(exchange, response, 200);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Usuario listado com Sucesso",
+                responseDtos
+        );
+
+        String json = mapper.writeValueAsString(response);
+
+        sendResponse(exchange, json, 200);
     }
 
     // POST
@@ -43,7 +60,13 @@ public class UsuarioController implements HttpHandler {
 
         ServiceUsuario.criarUsuario(user);
 
-        sendResponse(exchange, "Usuario criado com sucesso!", 201);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Usuario criado com Sucesso",
+                null
+        );
+
+        sendResponse(exchange, mapper.writeValueAsString(response), 201);
     }
 
     // PUT
@@ -58,7 +81,13 @@ public class UsuarioController implements HttpHandler {
 
         ServiceUsuario.atualizarUsuario(id, user);
 
-        sendResponse(exchange, "{}", 200);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Usuario Atualizado com sucesso",
+                null
+        );
+
+        sendResponse(exchange, mapper.writeValueAsString(response), 200);
     }
 
     // PATCH
@@ -71,19 +100,35 @@ public class UsuarioController implements HttpHandler {
 
         ServiceUsuario.atualizarParcialmenteUsuario(id, user);
 
-        sendResponse(exchange, "{}", 200);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Usuario atualizado parcialmente com sucesso",
+                null
+        );
+
+        sendResponse(exchange, mapper.writeValueAsString(response), 200);
     }
 
     // DELETE
     private void handleDelete(HttpExchange exchange) throws Exception {
 
-        logger.info("Recebendo requisição DELETE /Usuario/{id}");
+        logger.info("Recebendo requisição DELETE /usuarios/{id}");
 
-        int id = Integer.parseInt(exchange.getRequestURI().getPath().split("/")[2]);
+        int id = getIdFrompath(exchange.getRequestURI().getPath());
+
+        if (id <= 0) {
+            throw new ApiException("ID inválido", 400);
+        }
 
         ServiceUsuario.excluirUsuario(id);
 
-        sendResponse(exchange, "{}", 200);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Usuario deletado com sucesso",
+                null
+        );
+
+        sendResponse(exchange, mapper.writeValueAsString(response), 200);
     }
 
     // UTIL
@@ -106,13 +151,14 @@ public class UsuarioController implements HttpHandler {
     }
 
     private void sendResponse(HttpExchange exchange, String resposta, int status) throws Exception {
-        exchange.getResponseHeaders().add("Content-Type", "text/plain");
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
 
-        exchange.sendResponseHeaders(status, resposta.getBytes().length);
+        byte[] responseBytes = resposta.getBytes("UTF-8");
+        exchange.sendResponseHeaders(status, responseBytes.length);
 
         OutputStream os = exchange.getResponseBody();
 
-        os.write(resposta.getBytes());
+        os.write(responseBytes);
 
         os.close();
     }
@@ -171,44 +217,61 @@ public class UsuarioController implements HttpHandler {
                 default:
                     sendResponse(exchange, "Metodo não suportado", 404);
             }
+        } catch (ApiException e) {
+
+            logger.warning("Erro de Negocio: " + e.getMessage());
+
+            try {
+                ApiResponse response = new ApiResponse(
+                        false,
+                        e.getMessage(),
+                        null
+                );
+
+                String json = mapper.writeValueAsString(response);
+
+                sendResponse(exchange, json, e.getStatusCode());
+
+            } catch (Exception jsonError) {
+                logger.log(Level.SEVERE, "Erro ao converter JSON", jsonError);
+            }
+
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Erro ao processar requisição", e);
-        }
-    }
 
-    private boolean validarToken(HttpExchange exchange) throws Exception {
+            logger.log(Level.SEVERE, "Erro interno", e);
 
-        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+            try {
+                ApiResponse response = new ApiResponse(
+                        false,
+                        "Erro interno do servidor",
+                        null
+                );
 
-        // 1. Verifica se veio o header
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            sendResponse(exchange, "Token não informado", 401);
-            return false;
-        }
+                String json = mapper.writeValueAsString(response);
 
-        // 2. Remove "Bearer "
-        String token = authHeader.replace("Bearer ", "");
+                sendResponse(exchange, json, 500);
 
-        try {
-            // 3. Valida token
-            JwtUtil.validateToken(token); // ⚠️ veja o nome correto no seu JwtUtil
-            return true;
-        } catch (Exception e) {
-            sendResponse(exchange, "Token inválido", 401);
-            return false;
+            } catch (Exception jsonError) {
+                logger.log(Level.SEVERE, "Erro ao converter JSON", jsonError);
+            }
         }
     }
 
     private void handlerLogin(HttpExchange exchange) throws Exception {
-        logger.info("Recebendo requisição POST/login");
-
         String body = lerBody(exchange);
+        // Usando o Jackson para ler o JSON como uma árvore de nós
+        com.fasterxml.jackson.databind.JsonNode jsonNode = mapper.readTree(body);
 
-        String email = getValorJson(body, "email");
-        String password = getValorJson(body, "password");
+        String email = jsonNode.get("email").asText();
+        String password = jsonNode.get("password").asText();
 
         String result = ServiceUsuario.login(email, password);
 
-        sendResponse(exchange, result, 200);
+        ApiResponse response = new ApiResponse(
+                true,
+                "Login realizado com sucesso",
+                result
+        );
+        sendResponse(exchange, mapper.writeValueAsString(response), 200);
     }
 }

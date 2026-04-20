@@ -26,24 +26,30 @@ public class AuthFilter extends Filter {
             return;
         }
 
-        // 🔒 Rotas protegidas
         String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendResponse(exchange, "Token não informado", 401);
-            return;
+            return; // 🔥 ESSENCIAL
         }
 
-        String token = authHeader.replace("Bearer ", "");
+        String token = authHeader.replace("Bearer ", "").trim(); // 🔥 trim aqui
 
-        String email = JwtUtil.validateToken(token);
+        try {
+            String email = JwtUtil.validateToken(token);
 
-        if (email == null) {
+            if (email == null) {
+                sendResponse(exchange, "Token inválido", 401);
+                return; // 🔥 ESSENCIAL
+            }
+
+            chain.doFilter(exchange); // só continua se OK
+
+        } catch (Exception e) {
+            e.printStackTrace();
             sendResponse(exchange, "Token inválido", 401);
-            return;
+            // NÃO chama chain aqui
         }
-
-        chain.doFilter(exchange);
     }
 
     private void sendResponse(HttpExchange exchange, String message, int status) throws IOException{
@@ -52,4 +58,5 @@ public class AuthFilter extends Filter {
         os.write(message.getBytes());
         os.close();
     }
+
 }
