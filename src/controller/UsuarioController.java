@@ -1,5 +1,6 @@
 package controller;
 
+import dto.UsuarioRequest;
 import security.JwtUtil;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -13,37 +14,32 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class UsuarioController implements HttpHandler{
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class UsuarioController implements HttpHandler {
 
     private static final Logger logger = Logger.getLogger(UsuarioController.class.getName());
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     // GET
-    private void handleGet(HttpExchange exchange) throws Exception{
+    private void handleGet(HttpExchange exchange) throws Exception {
         logger.info("Recebendo Requisicao GET /Usuario");
 
-        if(!validarToken(exchange)) return;
+        List<UsuarioModel> users = ServiceUsuario.listarUsuarios();
 
-        List<String> users = ServiceUsuario.listarUsuarios();
-
-        String response = String.join("\n", users);
+        String response = mapper.writeValueAsString(users);
 
         sendResponse(exchange, response, 200);
     }
 
     // POST
-    private void handlePost(HttpExchange exchange) throws Exception{
+    private void handlePost(HttpExchange exchange) throws Exception {
         logger.info("Criando requisição POST /Usuario");
 
 
         String body = lerBody(exchange);
 
-        UsuarioModel user = new UsuarioModel();
-
-        user.setEmail(getValorJson(body, "email"));
-        user.setPassword(getValorJson(body, "senha"));
-        user.setFirst_name(getValorJson(body, "first_name"));
-        user.setLast_name(getValorJson(body, "last_name"));
-        user.setCpf(getValorJson(body, "cpf"));
+        UsuarioRequest user = mapper.readValue(body, UsuarioRequest.class);
 
         ServiceUsuario.criarUsuario(user);
 
@@ -51,81 +47,47 @@ public class UsuarioController implements HttpHandler{
     }
 
     // PUT
-    private void handlePut(HttpExchange exchange) throws Exception{
+    private void handlePut(HttpExchange exchange) throws Exception {
 
         logger.info("Recebendo a requisição PUT /Usuario");
 
-        if(!validarToken(exchange)) return;
 
-        String path = exchange.getRequestURI().getPath();
-        int id = getIdFrompath(path);
+        int id = Integer.parseInt(exchange.getRequestURI().getPath().split("/")[2]);
 
-        if(id <= 0){
-            sendResponse(exchange, "ID Invalido!", 400);
-            return;
-        }
+        UsuarioRequest user = mapper.readValue(lerBody(exchange), UsuarioRequest.class);
 
-        String body = lerBody(exchange);
+        ServiceUsuario.atualizarUsuario(id, user);
 
-        UsuarioModel user = new UsuarioModel();
-
-        user.setId(Integer.parseInt(getValorJson(body, "id")));
-        user.setEmail(getValorJson(body, "email"));
-        user.setPassword(getValorJson(body, "senha"));
-        user.setFirst_name(getValorJson(body, "first_name"));
-        user.setLast_name(getValorJson(body, "last_name"));
-        user.setCpf(getValorJson(body, "cpf"));
-
-        ServiceUsuario.atualizarUsuario(user);
-
-        sendResponse(exchange, "Usuário atualizado com sucesso!", 200);
+        sendResponse(exchange, "{}", 200);
     }
 
     // PATCH
-    private void handlerPatch(HttpExchange exchange) throws Exception{
+    private void handlerPatch(HttpExchange exchange) throws Exception {
         logger.info("Recebendo requisição PARTCH /usuario");
 
-        if(!validarToken(exchange)) return;
+        int id = Integer.parseInt(exchange.getRequestURI().getPath().split("/")[2]);
 
-        String body = lerBody(exchange);
+        UsuarioRequest user = mapper.readValue(lerBody(exchange), UsuarioRequest.class);
 
-        UsuarioModel user = new UsuarioModel();
+        ServiceUsuario.atualizarParcialmenteUsuario(id, user);
 
-        user.setId(Integer.parseInt(getValorJson(body, "id")));
-        user.setEmail(getValorJson(body, "email"));
-        user.setPassword(getValorJson(body, "senha"));
-        user.setFirst_name(getValorJson(body, "first_name"));
-        user.setLast_name(getValorJson(body, "last_name"));
-        user.setCpf(getValorJson(body, "cpf"));
-
-        ServiceUsuario.atualizarParcialmenteUsuario(user);
-
-        sendResponse(exchange, "Usuario atualizado parcialmente com sucesso!", 200);
+        sendResponse(exchange, "{}", 200);
     }
 
     // DELETE
-    private void handleDelete(HttpExchange exchange) throws Exception{
+    private void handleDelete(HttpExchange exchange) throws Exception {
 
         logger.info("Recebendo requisição DELETE /Usuario/{id}");
 
-        if(!validarToken(exchange)) return;
-
-        String path = exchange.getRequestURI().getPath();
-
-        int id = getIdFrompath(path);
-
-        if(id <= 0){
-            sendResponse(exchange, "ID Invalido", 400);
-            return;
-        }
+        int id = Integer.parseInt(exchange.getRequestURI().getPath().split("/")[2]);
 
         ServiceUsuario.excluirUsuario(id);
 
-        sendResponse(exchange, "Usuario Deletado com sucesso !", 200);
+        sendResponse(exchange, "{}", 200);
     }
 
     // UTIL
-    private String lerBody(HttpExchange exchange) throws Exception{
+    private String lerBody(HttpExchange exchange) throws Exception {
         InputStream is = exchange.getRequestBody();
         String body = new String(is.readAllBytes());
         is.close();
@@ -133,17 +95,17 @@ public class UsuarioController implements HttpHandler{
         return body;
     }
 
-    private int getIdFrompath(String path){
+    private int getIdFrompath(String path) {
         String[] partes = path.split("/");
 
-        if(partes.length < 3){
+        if (partes.length < 3) {
             return -1;
         }
 
         return Integer.parseInt(partes[2]);
     }
 
-    private void sendResponse(HttpExchange exchange, String resposta, int status) throws Exception{
+    private void sendResponse(HttpExchange exchange, String resposta, int status) throws Exception {
         exchange.getResponseHeaders().add("Content-Type", "text/plain");
 
         exchange.sendResponseHeaders(status, resposta.getBytes().length);
@@ -179,9 +141,9 @@ public class UsuarioController implements HttpHandler{
     }
 
     @Override
-    public void handle(HttpExchange exchange){
+    public void handle(HttpExchange exchange) {
         System.out.println("PATH: " + exchange.getRequestURI().getPath());
-        try{
+        try {
             String metodo = exchange.getRequestMethod();
 
             switch (metodo) {
@@ -191,7 +153,7 @@ public class UsuarioController implements HttpHandler{
                 case "POST":
                     String path = exchange.getRequestURI().getPath();
 
-                    if(path.startsWith("/login")){
+                    if (path.startsWith("/login")) {
                         handlerLogin(exchange); // ❗ NÃO valida token aqui
                     } else {
                         handlePost(exchange); // aqui sim pode validar
@@ -209,7 +171,7 @@ public class UsuarioController implements HttpHandler{
                 default:
                     sendResponse(exchange, "Metodo não suportado", 404);
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             logger.log(Level.SEVERE, "Erro ao processar requisição", e);
         }
     }
@@ -237,7 +199,7 @@ public class UsuarioController implements HttpHandler{
         }
     }
 
-    private void handlerLogin(HttpExchange exchange) throws Exception{
+    private void handlerLogin(HttpExchange exchange) throws Exception {
         logger.info("Recebendo requisição POST/login");
 
         String body = lerBody(exchange);

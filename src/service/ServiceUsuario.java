@@ -3,7 +3,7 @@ package service;
 import model.UsuarioModel;
 import repository.UsuarioRepository;
 import security.JwtUtil;
-
+import dto.UsuarioRequest;
 import java.util.List;
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
@@ -11,12 +11,12 @@ import de.mkammerer.argon2.Argon2Factory;
 public class ServiceUsuario {
 
     // GET
-    public static List<String> listarUsuarios() throws Exception {
+    public static List<UsuarioModel> listarUsuarios() throws Exception {
         return UsuarioRepository.listarUsuarios();
     }
 
     // POST
-    public static void criarUsuario(UsuarioModel usuario) throws Exception {
+    public static void criarUsuario(UsuarioRequest usuario) throws Exception {
         // Validação Simples
         if(usuario.getEmail() == null || usuario.getEmail().isEmpty()) {
             throw new Exception("Email Obrigatorio");
@@ -30,33 +30,33 @@ public class ServiceUsuario {
         UsuarioRepository.criarUsuario(
                 usuario.getEmail(),
                 EncryptedPassword,
-                usuario.getFirst_name(),
-                usuario.getLast_name(),
+                usuario.getFirstName(),
+                usuario.getLastName(),
                 usuario.getCpf()
         );
     }
 
     // PUT
-    public static void atualizarUsuario(UsuarioModel usuario) throws Exception {
-        if(usuario.getId() < 0) {
+    public static void atualizarUsuario(int id, UsuarioRequest usuario) throws Exception {
+        if(id < 0) {
             throw new Exception("ID Invalido");
         }
 
         String EncryptedPassword = hashPassword(usuario.getPassword());
 
         UsuarioRepository.atualizarUsuario(
-                usuario.getId(),
+                id,
                 usuario.getEmail(),
                 EncryptedPassword,
-                usuario.getFirst_name(),
-                usuario.getLast_name(),
+                usuario.getFirstName(),
+                usuario.getLastName(),
                 usuario.getCpf()
         );
     }
 
     // PATCH
-    public static void atualizarParcialmenteUsuario(UsuarioModel usuario) throws Exception {
-        if(usuario.getId() < 0) {
+    public static void atualizarParcialmenteUsuario(int id, UsuarioRequest usuario) throws Exception {
+        if(id< 0) {
             throw new Exception("ID Invalido");
         }
 
@@ -67,11 +67,11 @@ public class ServiceUsuario {
         }
 
         UsuarioRepository.atualizarParcialmenteUsuario(
-                usuario.getId(),
+                id,
                 usuario.getEmail(),
                 password,
-                usuario.getFirst_name(),
-                usuario.getLast_name(),
+                usuario.getFirstName(),
+                usuario.getLastName(),
                 usuario.getCpf()
         );
 
