@@ -15,6 +15,8 @@ public class CorsFilter extends Filter {
 
         if (exchange.getRequestMethod().equals("OPTIONS")) {
             exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+            return;
         }
 
         chain.doFilter(exchange);
