@@ -11,6 +11,8 @@ import de.mkammerer.argon2.Argon2Factory;
 
 public class ServiceUsuario {
 
+    private static final Argon2 argon2 = Argon2Factory.create();
+
     // GET
     public static List<UsuarioModel> listarUsuarios() throws Exception {
         return UsuarioRepository.listarUsuarios();
@@ -39,7 +41,7 @@ public class ServiceUsuario {
 
     // PUT
     public static void atualizarUsuario(int id, UsuarioRequest usuario) throws Exception {
-        if(id < 0) {
+        if(id <= 0) {
             throw new ApiException("ID inválido", 400);
         }
 
@@ -88,40 +90,30 @@ public class ServiceUsuario {
     }
 
     public static String hashPassword(String password) throws Exception {
-        Argon2 argon2 = Argon2Factory.create();
 
         // Parametros: iterations, memory, paralleism
         return argon2.hash(3,65536, 1, password.toCharArray());
     }
 
-    public static String login(String email, String password) throws Exception {
-        // validação basica
-        if(email == null || email.isEmpty()) {
-            throw new ApiException("Email Obrigatorio", 400);
+    public static String login(String email, String password) {
+
+        try {
+            UsuarioModel user = UsuarioRepository.buscarEmail(email);
+
+            if (user == null) {
+                throw new ApiException("Usuário não encontrado", 404);
+            }
+
+            boolean valido = argon2.verify(user.getPassword(), password.toCharArray());
+
+            if (!valido) {
+                throw new ApiException("Usuário ou senha inválidos", 401);
+            }
+
+            return JwtUtil.generateToken(user.getEmail());
+
+        } catch (Exception e) {
+            throw new ApiException("Erro ao buscar usuário", 500);
         }
-
-        if(password == null || password.isEmpty()) {
-            throw new ApiException("Password Obrigatorio", 400);
-        }
-
-        //busca usuario
-        UsuarioModel user = UsuarioRepository.buscarEmail(email);
-
-        if(user == null) {
-            throw new ApiException("Usuário não encontrado", 404);
-        }
-
-        Argon2 argon2 = Argon2Factory.create();
-
-        boolean valido = argon2.verify(user.getPassword(), password.toCharArray());
-
-        // argon2
-        if(!valido) {
-            throw new ApiException("Usuário ou senha inválidos", 401);
-        }
-
-        // JWT
-        return JwtUtil.generateToken(user.getEmail());
-
     }
 }

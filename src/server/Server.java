@@ -1,6 +1,7 @@
 package server;
 
 import com.sun.net.httpserver.HttpServer;
+import controller.AuthController;
 import controller.UsuarioController;
 import security.AuthFilter;
 import security.CorsFilter;
@@ -24,7 +25,7 @@ public class Server {
             usuariosContext.getFilters().add(new AuthFilter());
 
             // 🔓 /login (sem Auth, só CORS)
-            var loginContext = server.createContext("/login", new UsuarioController());
+            var loginContext = server.createContext("/login", new AuthController());
             loginContext.getFilters().add(new CorsFilter());
 
             server.setExecutor(null);

@@ -151,16 +151,14 @@ public class UsuarioController implements HttpHandler {
     }
 
     private void sendResponse(HttpExchange exchange, String resposta, int status) throws Exception {
-        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
 
         byte[] responseBytes = resposta.getBytes("UTF-8");
         exchange.sendResponseHeaders(status, responseBytes.length);
 
-        OutputStream os = exchange.getResponseBody();
-
-        os.write(responseBytes);
-
-        os.close();
+        try(OutputStream os = exchange.getResponseBody()) {
+            os.write(responseBytes);
+        }
     }
 
     private String getValorJson(String json, String chave) {
@@ -197,13 +195,7 @@ public class UsuarioController implements HttpHandler {
                     handleGet(exchange);
                     break;
                 case "POST":
-                    String path = exchange.getRequestURI().getPath();
-
-                    if (path.startsWith("/login")) {
-                        handlerLogin(exchange); // ❗ NÃO valida token aqui
-                    } else {
-                        handlePost(exchange); // aqui sim pode validar
-                    }
+                    handlePost(exchange);
                     break;
                 case "PUT":
                     handlePut(exchange);
@@ -221,16 +213,16 @@ public class UsuarioController implements HttpHandler {
 
             logger.warning("Erro de Negocio: " + e.getMessage());
 
+            ApiResponse response = new ApiResponse(
+                    false,
+                    e.getMessage(),
+                    null
+            );
+
             try {
-                ApiResponse response = new ApiResponse(
-                        false,
-                        e.getMessage(),
-                        null
-                );
-
                 String json = mapper.writeValueAsString(response);
-
                 sendResponse(exchange, json, e.getStatusCode());
+                return;
 
             } catch (Exception jsonError) {
                 logger.log(Level.SEVERE, "Erro ao converter JSON", jsonError);
@@ -240,38 +232,19 @@ public class UsuarioController implements HttpHandler {
 
             logger.log(Level.SEVERE, "Erro interno", e);
 
+            ApiResponse response = new ApiResponse(
+                    false,
+                    "Erro interno do servidor",
+                    null
+            );
+
             try {
-                ApiResponse response = new ApiResponse(
-                        false,
-                        "Erro interno do servidor",
-                        null
-                );
-
                 String json = mapper.writeValueAsString(response);
-
                 sendResponse(exchange, json, 500);
-
+                return;
             } catch (Exception jsonError) {
                 logger.log(Level.SEVERE, "Erro ao converter JSON", jsonError);
             }
         }
-    }
-
-    private void handlerLogin(HttpExchange exchange) throws Exception {
-        String body = lerBody(exchange);
-        // Usando o Jackson para ler o JSON como uma árvore de nós
-        com.fasterxml.jackson.databind.JsonNode jsonNode = mapper.readTree(body);
-
-        String email = jsonNode.get("email").asText();
-        String password = jsonNode.get("password").asText();
-
-        String result = ServiceUsuario.login(email, password);
-
-        ApiResponse response = new ApiResponse(
-                true,
-                "Login realizado com sucesso",
-                result
-        );
-        sendResponse(exchange, mapper.writeValueAsString(response), 200);
     }
 }
