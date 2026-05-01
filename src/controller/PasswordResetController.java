@@ -19,13 +19,18 @@ public class PasswordResetController implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange){
         try{
-            if(!exchange.getRequestMethod().equals("POST")){
+            if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                exchange.sendResponseHeaders(204, -1);
+                exchange.close();
+                return;
+            }
+
+            if(!exchange.getRequestMethod().equalsIgnoreCase("POST")){
                 sendJson(exchange, new ApiResponse(false, "Metodo não permitido", null),405);
                 return;
             }
 
             String path = exchange.getRequestURI().getPath();
-
 
             if(path.endsWith("/forgot-password")){
                 handleForgotPassword(exchange);
@@ -34,12 +39,15 @@ public class PasswordResetController implements HttpHandler {
             } else{
                 sendJson(exchange, new ApiResponse(false, "Rota não encontrada", null), 404);
             }
-        }catch (ApiException e){
-            try{
-                sendJson(exchange, new ApiResponse(false, "Erro interno do servidor", null), 500);
-            }catch (Exception ex){
-                ex.printStackTrace();
-            }
+
+        } catch (ApiException e) {
+
+            sendJson(exchange, new ApiResponse(false, e.getMessage(), null), e.getStatusCode());
+
+        } catch (Exception e) { // 🔥 FALTAVA ISSO
+
+            e.printStackTrace();
+            sendJson(exchange, new ApiResponse(false, "Erro interno do servidor", null), 500);
         }
     }
 

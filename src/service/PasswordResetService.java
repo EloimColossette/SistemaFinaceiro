@@ -23,8 +23,9 @@ public class PasswordResetService {
         Timestamp expiration = new Timestamp(System.currentTimeMillis() + (1000 * 60 * 15));
 
         PasswordResetRepository.salvarToken(user.getId(), token, expiration);
-
-        logger.fine("LINK: http://localhost:8080/reset-password?token=" + token);
+        
+        EmailService.enviarEmailRecuperacao(email, token);
+        logger.info("Email de recuperação enviado para : " + email);
 
     }
 

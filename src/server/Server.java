@@ -32,6 +32,8 @@ public class Server {
             var loginContext = server.createContext("/login", new AuthController());
             loginContext.getFilters().add(new CorsFilter());
 
+            server.createContext("/", new StaticFileHandler("SistemaCompras/public"));
+
             server.setExecutor(null);
             server.start();
 

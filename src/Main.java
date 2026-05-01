@@ -19,6 +19,7 @@ public class Main {
             logger.severe("Erro ao iniciar o servidor!");
             logger.log(Level.SEVERE, "Detalhes do erro: ", e);
         }
+        
     }
     
 }

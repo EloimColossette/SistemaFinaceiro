@@ -13,7 +13,7 @@ public class CorsFilter extends Filter {
         exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-        if (exchange.getRequestMethod().equals("OPTIONS")) {
+        if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
             exchange.sendResponseHeaders(204, -1);
             exchange.close();
             return;

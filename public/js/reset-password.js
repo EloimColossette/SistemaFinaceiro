@@ -1,10 +1,14 @@
-function getTokenFromUrl() {
+// Preenche o token automaticamente se o usuário clicou no link do email
+window.onload = function () {
     const params = new URLSearchParams(window.location.search);
-    return params.get("token");
+    const token = params.get("token");
+    if (token) {
+        document.getElementById("token").value = token;
+    }
 }
 
 async function resetPassword() {
-    const token = getTokenFromUrl();
+    const token = document.getElementById("token").value.trim();
     const newPassword = document.getElementById("newPassword").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const btn = document.getElementById("btnReset");
@@ -35,15 +39,12 @@ async function resetPassword() {
     btn.disabled = true;
 
     try {
-        const response = await fetch("http://localhost:8080/password/reset-password", {
+        const response = await fetch("http://localhost:8080/html/password/reset-password", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                token,
-                newPassword
-            })
+            body: JSON.stringify({ token, newPassword })
         });
 
         const data = await response.json();
@@ -53,7 +54,7 @@ async function resetPassword() {
             msg.className = "sucesso";
 
             setTimeout(() => {
-                window.location.href = "login.html";
+                window.location.href = "/html/login.html";
             }, 2000);
 
         } else {
@@ -64,8 +65,8 @@ async function resetPassword() {
     } catch (error) {
         msg.innerText = "Erro ao conectar com servidor";
         msg.className = "erro";
+    } finally {
+        btn.innerText = "Redefinir senha";
+        btn.disabled = false;
     }
-
-    btn.innerText = "Redefinir senha";
-    btn.disabled = false;
 }
